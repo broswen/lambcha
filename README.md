@@ -4,6 +4,37 @@
 
 ![diagram](lambcha.png)
 
+### Usage
+
+Send a `GET` request to the endpoint
+```json
+{
+    "id": "20EcBHVy66sV6FV4KGbCWGnZjz3",
+    "imageUrl": "endpoint/20EcBHVy66sV6FV4KGbCWGnZjz3"
+}
+``` 
+
+Application shows the image hosted at the `imageUrl` and the user enters the code they see.
+```json
+{
+    "id": "20EcBHVy66sV6FV4KGbCWGnZjz3",
+    "code": "I6VSCK"
+}
+```
+
+API returns an HTTP code with a `message` for the response.
+```json
+HTTP 200
+{
+    "message": "OK"
+}
+```
+```json
+HTTP 400
+{
+    "message": "INCORRECT"
+}
+```
 
 ### TODO
 - [x] improve api gateway error response formatting
