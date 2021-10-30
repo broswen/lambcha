@@ -10,3 +10,4 @@
 - [x] secure behind api keys
 - [x] make image length scale to code length automagically
 - [x] return 404 for expired items that still exist in dynamodb
+- [ ] generate TTS files on demand using Amazon Polly
