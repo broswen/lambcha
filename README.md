@@ -15,6 +15,7 @@ Send a `GET` request to the endpoint
 ``` 
 
 Application shows the image hosted at the `imageUrl` and the user enters the code they see.
+The application sends a `POST` request with the details
 ```json
 {
     "id": "20EcBHVy66sV6FV4KGbCWGnZjz3",
@@ -22,7 +23,7 @@ Application shows the image hosted at the `imageUrl` and the user enters the cod
 }
 ```
 
-API returns an HTTP code with a `message` for the response.
+API returns an HTTP code with a `message` for the response. 
 ```json
 HTTP 200
 {
