@@ -25,6 +25,10 @@ provider:
         - !GetAtt ImageBucket.Arn
         - !Join ["/", [!GetAtt ImageBucket.Arn, "*"]]
 
+  apiGateway:
+    apiKeys:
+      - testkey
+
   environment:
     TABLE: !Ref CodeTable
     BUCKET: !Ref ImageBucket
@@ -44,6 +48,7 @@ functions:
       - http:
           path: /
           method: get
+          private: true
   ValidateCode:
     handler: bin/validate_code
     reservedConcurrency: 1
@@ -51,6 +56,7 @@ functions:
       - http:
           path: /
           method: post
+          private: true
 
 resources:
   Resources:

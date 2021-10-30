@@ -52,7 +52,7 @@ func Handler(ctx context.Context) (Response, error) {
 	// because the font only has uppercase with different styles
 	upperCode := strings.ToUpper(code)
 
-	img, err := GenerateImage(code, 200, 100)
+	img, err := GenerateImage(code)
 	if err != nil {
 		log.Fatalf("generate image: %v\n", err)
 	}
@@ -82,7 +82,7 @@ func Handler(ctx context.Context) (Response, error) {
 			"PK":       &types.AttributeValueMemberS{Value: id.String()},
 			"code":     &types.AttributeValueMemberS{Value: upperCode},
 			"imageUrl": &types.AttributeValueMemberS{Value: imageUrl},
-			"TTL":      &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", time.Now().Unix()+int64(60))},
+			"TTL":      &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", time.Now().Unix()+int64(60*5))},
 		},
 	})
 
@@ -118,27 +118,30 @@ func GenerateCode(length int) string {
 	return string(chars)
 }
 
-func GenerateImage(code string, width, height int) (*image.RGBA, error) {
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-
-	draw.Draw(img, img.Bounds(), &image.Uniform{color.White}, image.Pt(0, 0), draw.Src)
-
-	Colorify(img)
+func GenerateImage(code string) (*image.RGBA, error) {
 
 	f, err := LoadFont(os.Getenv("FONT"))
 	if err != nil {
 		return &image.RGBA{}, err
 	}
 
+	face := truetype.NewFace(f, &truetype.Options{
+		Size:    40,
+		DPI:     100,
+		Hinting: font.HintingNone,
+	})
+
+	img := image.NewRGBA(image.Rect(0, 0, len(code)*35, 100))
+
+	draw.Draw(img, img.Bounds(), &image.Uniform{color.White}, image.Pt(0, 0), draw.Src)
+
+	Colorify(img)
+
 	d := &font.Drawer{
-		Dst: img,
-		Src: image.Black,
-		Face: truetype.NewFace(f, &truetype.Options{
-			Size:    40,
-			DPI:     100,
-			Hinting: font.HintingNone,
-		}),
-		Dot: fixed.P(img.Bounds().Dx()/10, img.Bounds().Dy()/4*3),
+		Dst:  img,
+		Src:  image.Black,
+		Face: face,
+		Dot:  fixed.P(img.Bounds().Dx()/10, img.Bounds().Dy()/4*3),
 	}
 
 	d.DrawString(code)

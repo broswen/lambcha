@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"image"
-	"image/color"
-	"image/draw"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -18,10 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/goki/freetype"
-	"github.com/goki/freetype/truetype"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
 )
 
 var ddbClient *dynamodb.Client
@@ -42,7 +35,8 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 	var input ValidateCodeRequest
 	err := json.Unmarshal([]byte(event.Body), &input)
 	if err != nil {
-		log.Fatalf("unmarshal request: %v\n", err)
+		log.Printf("unmarshal request: %v\n", err)
+		return GenerateResponse(err.Error(), 500)
 	}
 
 	getItemResponse, err := ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{
@@ -53,31 +47,31 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 	})
 
 	if err != nil {
-		log.Fatalf("put item: %v\n", err)
+		log.Printf("put item: %v\n", err)
+		return GenerateResponse(err.Error(), 500)
 	}
 
 	if getItemResponse.Item == nil {
-		return Response{
-			StatusCode:      404,
-			IsBase64Encoded: false,
-			Body:            "",
-		}, nil
+		return GenerateResponse("NOT FOUND", 404)
 	}
 
 	actualCode := getItemResponse.Item["code"].(*types.AttributeValueMemberS).Value
+	ttl, err := strconv.Atoi(getItemResponse.Item["TTL"].(*types.AttributeValueMemberN).Value)
 
-	var response ValidateCodeResponse
-	var status int
 	if actualCode != input.Code {
-		response = ValidateCodeResponse{
-			Message: "INCORRECT",
-		}
-		status = 400
-	} else {
-		response = ValidateCodeResponse{
-			Message: "OK",
-		}
-		status = 200
+		return GenerateResponse("INCORRECT", 400)
+	} else if int64(ttl) < time.Now().Unix() {
+		return GenerateResponse("NOT FOUND", 404)
+	}
+
+	return GenerateResponse("OK", 200)
+
+}
+
+func GenerateResponse(message string, status int) (Response, error) {
+
+	response := ValidateCodeResponse{
+		Message: message,
 	}
 
 	body, err := json.Marshal(response)
@@ -91,78 +85,6 @@ func Handler(ctx context.Context, event events.APIGatewayProxyRequest) (Response
 	}
 
 	return resp, nil
-}
-
-func GenerateCode(length int) string {
-	charset := []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-	chars := make([]byte, length)
-	for i := range chars {
-		chars[i] = charset[rand.Intn(len(charset))]
-	}
-
-	return string(chars)
-}
-
-func GenerateImage(code string, width, height int) (*image.RGBA, error) {
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-
-	draw.Draw(img, img.Bounds(), &image.Uniform{color.White}, image.Pt(0, 0), draw.Src)
-
-	Colorify(img)
-
-	f, err := LoadFont(os.Getenv("FONT"))
-	if err != nil {
-		return &image.RGBA{}, err
-	}
-
-	d := &font.Drawer{
-		Dst: img,
-		Src: image.Black,
-		Face: truetype.NewFace(f, &truetype.Options{
-			Size:    40,
-			DPI:     100,
-			Hinting: font.HintingNone,
-		}),
-		Dot: fixed.P(img.Bounds().Dx()/10, img.Bounds().Dy()/4*3),
-	}
-
-	d.DrawString(code)
-	return img, nil
-}
-
-func Colorify(img draw.Image) {
-	for x := 0; x < img.Bounds().Dx(); x += 10 {
-		for y := 0; y < img.Bounds().Dy(); y += 10 {
-			randomColor := color.RGBA{byte(rand.Intn(255)), byte(rand.Intn(255)), byte(rand.Intn(255)), 255}
-			randomSize := rand.Intn(25)
-			draw.Draw(img, image.Rect(x, y, x+randomSize, y+randomSize), image.NewUniform(randomColor), image.Pt(x, y), draw.Src)
-		}
-	}
-}
-
-func LoadFont(name string) (*truetype.Font, error) {
-	fontBytes, err := ioutil.ReadFile(name)
-	if err != nil {
-		return nil, err
-	}
-
-	f, err := freetype.ParseFont(fontBytes)
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
-}
-
-func ListFiles() error {
-	files, err := ioutil.ReadDir(".")
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		log.Println(file.Name(), file.IsDir())
-	}
-	return nil
 }
 
 func init() {

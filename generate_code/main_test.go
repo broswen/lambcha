@@ -30,9 +30,9 @@ func TestLoadFont(t *testing.T) {
 func TestGenerateImage(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	os.Setenv("FONT", "Blox2.ttf")
-	code := GenerateCode(6)
+	code := GenerateCode(10)
 	fmt.Println(code)
-	img, err := GenerateImage(code, 200, 100)
+	img, err := GenerateImage(code)
 	if err != nil {
 		t.Fatalf("generate image: %v\n", err)
 	}
