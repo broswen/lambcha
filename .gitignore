@@ -1,0 +1,5 @@
+bin
+.serverless
+
+# ignore the font 
+*Blox2.ttf

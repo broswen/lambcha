@@ -1,0 +1,90 @@
+service: lambcha
+frameworkVersion: "2"
+
+provider:
+  name: aws
+  runtime: go1.x
+  lambdaHashingVersion: 20201221
+
+  stage: dev
+  region: us-east-1
+  timeout: 3
+  memorySize: 128
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:GetItem"
+        - "dynamodb:PutItem"
+      Resource:
+        - !GetAtt CodeTable.Arn
+    - Effect: "Allow"
+      Action:
+        - "s3:PutObject"
+      Resource:
+        - !GetAtt ImageBucket.Arn
+        - !Join ["/", [!GetAtt ImageBucket.Arn, "*"]]
+
+  environment:
+    TABLE: !Ref CodeTable
+    BUCKET: !Ref ImageBucket
+    BUCKET_DOMAIN: !GetAtt ImageBucket.DomainName
+    FONT: bin/Blox2.ttf
+
+package:
+  patterns:
+    - "!./**"
+    - ./bin/**
+
+functions:
+  GenerateCode:
+    handler: bin/generate_code
+    reservedConcurrency: 1
+    events:
+      - http:
+          path: /
+          method: get
+  ValidateCode:
+    handler: bin/validate_code
+    reservedConcurrency: 1
+    events:
+      - http:
+          path: /
+          method: post
+
+resources:
+  Resources:
+    ImageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        LifecycleConfiguration:
+          Rules:
+            - Status: Enabled
+              ExpirationInDays: 1
+
+    ImageBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref ImageBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Action:
+                - "s3:GetObject"
+              Effect: Allow
+              Resource: !Join ["/", [!GetAtt ImageBucket.Arn, "*"]]
+              Principal: "*"
+
+    CodeTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: TTL
+          Enabled: true
