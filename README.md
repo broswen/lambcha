@@ -15,11 +15,17 @@ Send a `GET` request to the endpoint
 ``` 
 
 Application shows the image hosted at the `imageUrl` and the user enters the code they see.
+
+Example image:
+
+![code](code.png)
+
+
 The application sends a `POST` request with the details
 ```json
 {
     "id": "20EcBHVy66sV6FV4KGbCWGnZjz3",
-    "code": "I6VSCK"
+    "code": "RJBGB6"
 }
 ```
 
